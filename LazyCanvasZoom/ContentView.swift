@@ -9,7 +9,6 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var zoomState = ZoomState()
-    
     let numberOfItems = 20
     
     var body: some View {
@@ -18,12 +17,10 @@ struct ContentView: View {
                 LazyHStack(spacing: 0) {
                     ForEach(0..<numberOfItems, id: \.self) { index in
                         EquatableCanvasWrapper(content: SimpleCanvas(
-                            index: index,
-                            isZooming: zoomState.isZooming,
-                            currentScale: zoomState.scale
+                            index: index
                         ))
-                        .frame(width: 200 * zoomState.scale,
-                               height: 200 * zoomState.scale)
+                        .frame(width: 200, height: 200) // Fixed base size
+                        .scaleEffect(zoomState.scale) // Apply scale effect here
                         .border(.gray)
                         .id("canvas_\(index)")
                     }
@@ -31,18 +28,15 @@ struct ContentView: View {
             }
             .frame(height: 300)
             .border(.pink)
-            .gesture(MagnificationGesture()
-                .onChanged { scale in
-                    zoomState.isZooming = true
-                    zoomState.scale = scale
-                }
-                .onEnded { _ in
-                    zoomState.isZooming = false
-                    // Keep the current scale instead of resetting
-                    // zoomState.scale = 1.0
-                }
-            )
         }
+        .gesture(MagnificationGesture()
+            .onChanged { scale in
+                zoomState.scale = scale
+            }
+            .onEnded { _ in
+                // Optional: Add any end-of-gesture logic here
+            }
+        )
     }
 }
 
@@ -61,37 +55,23 @@ struct EquatableCanvasWrapper: View, Equatable {
 
 struct SimpleCanvas: View, Equatable {
     let index: Int
-    let isZooming: Bool
-    let currentScale: CGFloat
     
     static func == (lhs: SimpleCanvas, rhs: SimpleCanvas) -> Bool {
-        if lhs.isZooming && rhs.isZooming {
-            return true
-        }
-        return lhs.index == rhs.index &&
-               lhs.isZooming == rhs.isZooming &&
-               abs(lhs.currentScale - rhs.currentScale) < 0.001
+        lhs.index == rhs.index
     }
     
     var body: some View {
         Canvas { context, size in
-            print("DRAWING CANVAS \(index)")
+            print("DRAWING CANVAS \(index), size \(size)")
             
             let text = Text("\(index)").font(.system(size: 60))
             let position = CGPoint(x: size.width/2, y: size.height/2)
-            
-            // Scale the text relative to the zoom
-            context.scaleBy(x: 1/currentScale, y: 1/currentScale)
-            context.draw(text, at: CGPoint(
-                x: position.x * currentScale,
-                y: position.y * currentScale
-            ))
+            context.draw(text, at: position)
         }
     }
 }
 
 class ZoomState: ObservableObject {
-    @Published var isZooming: Bool = false
     @Published var scale: CGFloat = 1.0
 }
 
